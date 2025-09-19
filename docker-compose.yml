@@ -1,0 +1,230 @@
+version: '3.8'
+
+services:
+  # --- Databases ---
+  devices-db:
+    image: mariadb:11
+    container_name: devices-db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: devices_db
+      MYSQL_USER: devices_user
+      MYSQL_PASSWORD: devices_pass
+    volumes:
+      - devices_data:/var/lib/mysql
+    ports:
+      - "3312:3306"  # <--- Exponer puerto
+    networks:
+      - backend
+
+  orders-db:
+    image: mariadb:11
+    container_name: orders-db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: orders_db
+      MYSQL_USER: orders_user
+      MYSQL_PASSWORD: orders_pass
+    volumes:
+      - orders_data:/var/lib/mysql
+    ports:
+      - "3311:3306"  # <--- Exponer puerto diferente
+    networks:
+      - backend
+
+  employees-db:
+    image: mariadb:11
+    container_name: employees-db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: employees_db
+      MYSQL_USER: employees_user
+      MYSQL_PASSWORD: employees_pass
+    volumes:
+      - employees_data:/var/lib/mysql
+    ports:
+      - "3308:3306"  # <--- Exponer puerto diferente
+    networks:
+      - backend
+
+  groups-db:
+    image: mariadb:11
+    container_name: groups-db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: groups_db
+      MYSQL_USER: groups_user
+      MYSQL_PASSWORD: groups_pass
+    volumes:
+      - groups_data:/var/lib/mysql
+    ports:
+      - "3309:3306"  # <--- Exponer puerto diferente
+    networks:
+      - backend
+
+  notifications-db:
+    image: mariadb:11
+    container_name: notifications-db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: notifications_db
+      MYSQL_USER: notifications_user
+      MYSQL_PASSWORD: notifications_pass
+    volumes:
+      - notifications_data:/var/lib/mysql
+    ports:
+      - "3310:3306"  # <--- Exponer puerto diferente
+    networks:
+      - backend
+
+  # --- Storage services ---
+  minio:
+    image: minio/minio
+    container_name: minio
+    ports:
+      - "9000:9000"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data
+    volumes:
+      - minio_data:/data
+    networks:
+      - backend      
+
+  # --- Eureka Server (discovery service) ---
+  eureka-server:
+    build: ./eureka-server
+    container_name: eureka-server
+    ports:
+      - "8761:8761"
+    networks:
+      - backend
+
+  # --- Microservices ---
+  devices-service:
+    build: ./devices-service
+    container_name: devices-service
+    depends_on:
+      - devices-db
+      - eureka-server
+    environment:
+      DB_HOST: devices-db
+      DB_PORT: 3306
+      DB_NAME: devices_db
+      DB_USER: devices_user
+      DB_PASS: devices_pass
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    networks:
+      - backend
+
+  orders-service:
+    build: ./orders-service
+    container_name: orders-service
+    depends_on:
+      - orders-db
+      - eureka-server
+    environment:
+      DB_HOST: orders-db
+      DB_PORT: 3306
+      DB_NAME: orders_db
+      DB_USER: orders_user
+      DB_PASS: orders_pass
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    networks:
+      - backend
+
+  employees-service:
+    build: ./employees-service 
+    container_name: employees-service
+    depends_on:
+      - employees-db
+      - eureka-server
+    environment:
+      DB_HOST: employees-db
+      DB_PORT: 3306
+      DB_NAME: employees_db
+      DB_USER: employees_user
+      DB_PASS: employees_pass
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    networks:
+      - backend
+
+  groups-service:
+    build: ./groups-service
+    container_name: groups-service
+    depends_on:
+      - groups-db
+      - eureka-server
+    environment:
+      DB_HOST: groups-db
+      DB_PORT: 3306
+      DB_NAME: groups_db
+      DB_USER: groups_user
+      DB_PASS: groups_pass
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    networks:
+      - backend
+
+  notifications-service:
+    build: ./notifications-service
+    container_name: notifications-service
+    depends_on:
+      - notifications-db
+      - eureka-server
+    environment:
+      DB_HOST: notifications-db
+      DB_PORT: 3306
+      DB_NAME: notifications_db
+      DB_USER: notifications_user
+      DB_PASS: notifications_pass
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    networks:
+      - backend
+
+  # --- API Gateway ---
+  api-gateway:
+    build: ./api-gateway
+    container_name: api-gateway
+    ports:  
+      - "8080:8080"
+    depends_on:
+      - devices-service
+      - orders-service
+      - employees-service
+      - groups-service
+      - notifications-service
+      - eureka-server
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    networks:
+      - backend
+      - frontend
+
+  # --- Frontend ---
+  infragest-frontend:
+    build: ./frontend
+    container_name: infragest-frontend
+    ports:
+      - "4200:80"
+    networks:
+      - frontend
+
+# --- Volumes ---
+volumes:
+  devices_data:
+  orders_data:
+  employees_data:
+  groups_data:
+  notifications_data:
+  minio_data:
+
+# --- Networks ---
+networks:
+  backend:
+  frontend:
