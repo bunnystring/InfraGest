@@ -1,0 +1,41 @@
+# Java
+*.class
+*.jar
+*.war
+*.ear
+/target/
+/build/
+
+# Logs
+*.log
+
+# Eclipse/IntelliJ
+*.iml
+.idea/
+*.ipr
+*.iws
+*.classpath
+*.project
+*.settings/
+
+# VSCode
+.vscode/
+
+# OS generated
+.DS_Store
+Thumbs.db
+
+# Docker
+**/tmp/
+**/data/
+.env
+
+# Node/Frontend
+node_modules/
+npm-debug.log
+yarn-error.log
+dist/
+build/
+.env.local
+.env.development
+.env.production
